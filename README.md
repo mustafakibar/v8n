@@ -87,6 +87,38 @@ try {
 > the validation process. Look and the [ValidationException
 > docs](#validationexception) section to learn more about it.
 
+### Asynchronous validation
+
+If your validation strategy includes some asynchronous rule, you must use the
+[testAsync](#testasync) function, so that the validation process will execute
+asynchronously. It will return a promise that will resolve with the validated
+value when it's valid and rejects with a
+[ValidationException](#validationexception) when it's invalid.
+
+> Look at the [testAsync](#testasync) documentation to learn more about them.
+>
+> To learn how you can define your custom asynchronous rules, check out [this
+> documentation](#extend) section.
+
+```javascript
+v8n()
+  .number()
+  .between(10, 100)
+  .someAsyncRule()
+  .testAsync(50)
+  .then(value => {
+    // It's valid!!!
+  })
+  .catch(exception => {
+    // It's invalid!
+  });
+```
+
+> The `exception` object caught by the failure callback contains information
+> about the rule which caused the validation fail, and about the validation
+> process. Look at [its documentation](#validationexception) to learn more about
+> it.
+
 ### And more...
 
 There are a lot of useful standard rules for you to use already implemented in
@@ -121,7 +153,7 @@ v8n()
 ```
 
 > To learn more about custom rules and how to implement them, look at the
-> [v8n#extend](#extend) documentation section.
+> [extend](#extend) documentation section.
 
 ## The `not` modifier
 
@@ -178,10 +210,11 @@ simple way.
 
 ## Features
 
--   Fluent and chainable API;
--   Useful standard validation rules;
--   Custom validations rules;
--   Reusability;
+- Fluent and chainable API;
+- Useful standard validation rules;
+- Custom validations rules;
+- Asynchronous validation;
+- Reusability;
 
 ## Fluent and chainable API
 
@@ -279,58 +312,59 @@ v8n()
 
 #### Table of Contents
 
--   [v8n](#v8n)
-    -   [extend](#extend)
--   [Validation](#validation)
-    -   [Examples](#examples-1)
--   [Rule](#rule)
-    -   [Parameters](#parameters-1)
--   [core](#core)
-    -   [test](#test)
-    -   [check](#check)
--   [ValidationException](#validationexception)
-    -   [Parameters](#parameters-4)
--   [modifiers](#modifiers)
-    -   [not](#not)
--   [rules](#rules)
-    -   [pattern](#pattern)
-    -   [equal](#equal)
-    -   [exact](#exact)
-    -   [string](#string)
-    -   [number](#number)
-    -   [boolean](#boolean)
-    -   [undefined](#undefined)
-    -   [null](#null)
-    -   [array](#array)
-    -   [lowercase](#lowercase)
-    -   [uppercase](#uppercase)
-    -   [vowel](#vowel)
-    -   [consonant](#consonant)
-    -   [first](#first)
-    -   [last](#last)
-    -   [empty](#empty)
-    -   [length](#length)
-    -   [minLength](#minlength)
-    -   [maxLength](#maxlength)
-    -   [negative](#negative)
-    -   [positive](#positive)
-    -   [between](#between)
-    -   [range](#range)
-    -   [lessThan](#lessthan)
-    -   [lessThanOrEqual](#lessthanorequal)
-    -   [greaterThan](#greaterthan)
-    -   [greaterThanOrEqual](#greaterthanorequal)
-    -   [even](#even)
-    -   [odd](#odd)
-    -   [includes](#includes)
-    -   [integer](#integer)
+- [v8n](#v8n)
+  - [extend](#extend)
+- [Validation](#validation)
+  - [Examples](#examples-1)
+- [Rule](#rule)
+  - [Parameters](#parameters-1)
+- [core](#core)
+  - [test](#test)
+  - [check](#check)
+  - [testAsync](#testasync)
+- [ValidationException](#validationexception)
+  - [Parameters](#parameters-5)
+- [modifiers](#modifiers)
+  - [not](#not)
+- [rules](#rules)
+  - [pattern](#pattern)
+  - [equal](#equal)
+  - [exact](#exact)
+  - [string](#string)
+  - [number](#number)
+  - [boolean](#boolean)
+  - [undefined](#undefined)
+  - [null](#null)
+  - [array](#array)
+  - [lowercase](#lowercase)
+  - [uppercase](#uppercase)
+  - [vowel](#vowel)
+  - [consonant](#consonant)
+  - [first](#first)
+  - [last](#last)
+  - [empty](#empty)
+  - [length](#length)
+  - [minLength](#minlength)
+  - [maxLength](#maxlength)
+  - [negative](#negative)
+  - [positive](#positive)
+  - [between](#between)
+  - [range](#range)
+  - [lessThan](#lessthan)
+  - [lessThanOrEqual](#lessthanorequal)
+  - [greaterThan](#greaterthan)
+  - [greaterThanOrEqual](#greaterthanorequal)
+  - [even](#even)
+  - [odd](#odd)
+  - [includes](#includes)
+  - [integer](#integer)
 
 ### v8n
 
 Function used to produce a [Validation](#validation) object. The Validation object
 is used to configure a validation strategy and perform the validation tests.
 
-Returns **[Validation](#validation)** 
+Returns **[Validation](#validation)**
 
 #### extend
 
@@ -345,8 +379,14 @@ called as a member function in a validation object instance.
 
 > The validation engine will inject custom rules into validation object
 > instances when needed.
+>
+> The new added rules can be used like any standard rule when building
+> validations.
+>
+> To understand how validations works, see [Validation](#validation) and
+> [rules](#rules) sections.
 
-**Custom rule structure:**
+**Basic (synchronous) custom rule structure:**
 
 A custom rule is a function that returns another function. The custom rule
 function can take parameters for its own configuration, and should return a
@@ -354,33 +394,46 @@ function which takes only a `value` as parameter. This `value` must be
 validated by this function and return `true` for valid value and `false` for
 invalid value.
 
-> The new added rules can be used like any standard rule when building
-> validations.
->
-> To understand how validations works, see [Validation](#validation) and
-> [rules](#rules) sections.
+**Asynchronous custom rule structure:\***
+
+A asynchronous custom rule looks like a basic custom rule, but instead of
+returning a function which returns `true` or `false`, it should return a
+function that returns a promise which resolves to `true` when the value is
+valid and to `false` when the value is invalid.
 
 ##### Parameters
 
--   `newRules` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** an object containing named custom `rule functions`
+- `newRules` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** an object containing named custom `rule functions`
 
 ##### Examples
 
 ```javascript
+// A basic (synchronous) rule
 function myCustomRule(expected) {
   return value => value === expected;
 }
 
+// An asynchronous rule
+function myAsyncCustomRule(expected) {
+  return value => {
+    // fetches data from an api, for example, and resolves with the result
+    const result = fetch("some API call");
+    return Promise.resolve(result == expected);
+  };
+}
+
 // Adding a custom rule
 v8n.extend({
-  myCustomRule
+  myCustomRule,
+  myAsyncCustomRule
 });
 
 // Using the custom rule in validation
 v8n()
- .string()
- .myCustomRule("Awesome") // Used like any other rule
- .test("Awesome"); // true
+  .string()
+  .myCustomRule("Awesome") // Used like any other rule
+  .myAsyncCustomRule("Async is awesome too") // Asynchronous rules!
+  .testAsync("Awesome"); // Promise
 ```
 
 ### Validation
@@ -396,7 +449,7 @@ validation strategy chain and return the validation object instance for
 chaining `rules` functions calls together.
 
 All the rules functions that are available for use by a [Validation](#validation)
-object instance are actually declared  in the [rules](#rules) object. Those
+object instance are actually declared in the [rules](#rules) object. Those
 `rules` functions are injected into each Validation object instance.
 
 Look at the [rules](#rules) object to see all the available `rules`.
@@ -409,24 +462,43 @@ call meaning.
 
 **Validating**
 
-There are two ways to perform a validation: the functions
-[test](#coretest) and [check](#corecheck).
+There are two way to perform a validation: synchronous and asynchronous.
 
-When the [test](#coretest) function is used, a validation based on a
-boolean return value is performed.
+When you have a validation strategy with promise-based rules, like a rule
+that performs an API check or any other kind of asynchronous test, you
+should use the [testAsync](#coretestasync) function. This function
+produces a promise based validation.
 
-When the [check](#corecheck) function is used, a validation based on
-exception throw is performed.
+But, if your validation strategy contains **only** synchronous rules, like
+`.string()`, `.minLength(2)`, whatever, you'd better use the functions
+[test](#coretest) or [check](#corecheck).
 
 > Look at these functions documentation to know more about them.
 
 #### Examples
 
 ```javascript
+// Synchronous validation
+
 v8n() // Creates a validation object instance
- .not.null()   // Inverting the `null` rule call to `not null`
- .minLength(3) // Chaining `rules` to the validation strategy
- .test("some value");  // Executes the validation test function
+  .not.null() // Inverting the `null` rule call to `not null`
+  .minLength(3) // Chaining `rules` to the validation strategy
+  .test("some value"); // Executes the validation test function
+```
+
+```javascript
+// Asynchronous validation
+
+v8n()
+  .not.null()
+  .someAsyncRule() // some asynchronous rule
+  .testAsync("some value")
+  .then(value => {
+    // valid
+  })
+  .catch(ex => {
+    // invalid!
+  });
 ```
 
 ### Rule
@@ -450,10 +522,10 @@ defines if the rule has to be inverted in its meaning.
 
 #### Parameters
 
--   `name` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** rule function name
--   `fn` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** validation function executed by the rule
--   `args` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** arguments list for the validation function
--   `invert` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** indicates if the rule has its meaning inverted
+- `name` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** rule function name
+- `fn` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** validation function executed by the rule
+- `args` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** arguments list for the validation function
+- `invert` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** indicates if the rule has its meaning inverted
 
 ### core
 
@@ -474,7 +546,7 @@ returns a `boolean` result.
 
 ##### Parameters
 
--   `value` **any** the value to be validated
+- `value` **any** the value to be validated
 
 Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** true for valid and false for invalid
 
@@ -490,10 +562,33 @@ throws a [ValidationException](#validationexception) when the value is not valid
 
 ##### Parameters
 
--   `value` **any** the value to be validated
+- `value` **any** the value to be validated
 
+* Throws **[ValidationException](#validationexception)** exception thrown when the validation fails
 
--   Throws **[ValidationException](#validationexception)** exception thrown when the validation fails
+#### testAsync
+
+- **See: ValidationException**
+
+Performs asynchronous validation.
+
+When this function is used it performs the validation process
+asynchronously, and it returns a promise that resolves to the validated
+value when it's valid and rejects with a [ValidationException](#validationexception) when
+it's invalid or when an exception occurs.
+
+> To learn more about asynchronous validation, look at the
+> [Validation](#Validation) section.
+>
+> For a validation strategy with non promise-based rules, you'd better use
+> the [test](#test) and [check](#check) functions.
+
+##### Parameters
+
+- `value` **any** the value to be validated
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)** promise that resolves to the validated value or rejects
+with a [ValidationException](#validationexception)
 
 ### ValidationException
 
@@ -502,18 +597,15 @@ about a validation exception.
 
 **Validation exception object:**
 
-A validation exception object is thrown by the [check](#corecheck)
-function when the validation fails.
-
 It contains information about the [Rule](#rule) which was been performed
 during the fail, the value been validated and the cause of the thrown
 exception.
 
 #### Parameters
 
--   `rule` **[Rule](#rule)** performing when the exception was thrown
--   `value` **any** been validated when the exception was thrown
--   `cause` **any** cause of the thrown exception
+- `rule` **[Rule](#rule)** performing when the exception was thrown
+- `value` **any** been validated when the exception was thrown
+- `cause` **any** cause of the thrown exception
 
 ### modifiers
 
@@ -538,8 +630,7 @@ meaning, making it to expect the opposite result.
 ```javascript
 // This call will make the `equal` rule to be inverted, so that it now
 // expect the validated value to be everything but "three".
-v8n()
- .not.equal("three");
+v8n().not.equal("three");
 ```
 
 ### rules
@@ -564,18 +655,18 @@ matches an specified pattern.
 
 ##### Parameters
 
--   `pattern` **[RegExp](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/RegExp)** the regular expression pattern
+- `pattern` **[RegExp](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/RegExp)** the regular expression pattern
 
 ##### Examples
 
 ```javascript
 v8n()
-   .pattern(/[a-z]+/)
-   .test("hello"); // true
+  .pattern(/[a-z]+/)
+  .test("hello"); // true
 
 v8n()
- .pattern(/[0-9]/)
- .test("hello"); // false
+  .pattern(/[0-9]/)
+  .test("hello"); // false
 ```
 
 #### equal
@@ -592,18 +683,18 @@ specified expected value.
 
 ##### Parameters
 
--   `expected` **any** the expected value
+- `expected` **any** the expected value
 
 ##### Examples
 
 ```javascript
 v8n()
- .equal(10)
- .test("10"); // true
+  .equal(10)
+  .test("10"); // true
 
 v8n()
- .equal("Hello")
- .test("Another"); // false
+  .equal("Hello")
+  .test("Another"); // false
 ```
 
 #### exact
@@ -620,18 +711,18 @@ specified expected value.
 
 ##### Parameters
 
--   `expected` **any** the expected value
+- `expected` **any** the expected value
 
 ##### Examples
 
 ```javascript
 v8n()
- .exact(10)
- .test("10"); // false
+  .exact(10)
+  .test("10"); // false
 
 v8n()
- .exact("Hello")
- .test("Hello"); // true
+  .exact("Hello")
+  .test("Hello"); // true
 ```
 
 #### string
@@ -644,12 +735,12 @@ This is used to check if the validated value is of type `string`.
 
 ```javascript
 v8n()
-   .string()
-   .test("Hello"); // true
+  .string()
+  .test("Hello"); // true
 
 v8n()
-   .string()
-   .test(123); // false
+  .string()
+  .test(123); // false
 ```
 
 #### number
@@ -662,12 +753,12 @@ This is used to check if the validated value is of type "number".
 
 ```javascript
 v8n()
-   .number()
-   .test(123); // true
+  .number()
+  .test(123); // true
 
 v8n()
-   .number()
-   .test("Hello"); // false
+  .number()
+  .test("Hello"); // false
 ```
 
 #### boolean
@@ -680,12 +771,12 @@ This is used to check if the validated value is of type "boolean".
 
 ```javascript
 v8n()
-   .boolean()
-   .test(22); // false
+  .boolean()
+  .test(22); // false
 
 v8n()
-   .boolean()
-   .test(false); // true
+  .boolean()
+  .test(false); // true
 ```
 
 #### undefined
@@ -698,16 +789,16 @@ This is used to check if the validated value is undefined.
 
 ```javascript
 v8n()
-   .undefined()
-   .test("something"); // false
+  .undefined()
+  .test("something"); // false
 
 v8n()
-   .undefined()
-   .test(undefined); // true
+  .undefined()
+  .test(undefined); // true
 
 v8n()
-   .undefined()
-   .test(); // true
+  .undefined()
+  .test(); // true
 ```
 
 #### null
@@ -720,12 +811,12 @@ This is used to check if the validated value is null.
 
 ```javascript
 v8n()
-   .null()
-   .test(123); // false
+  .null()
+  .test(123); // false
 
 v8n()
-   .null()
-   .test(null); // true
+  .null()
+  .test(null); // true
 ```
 
 #### array
@@ -738,12 +829,12 @@ This is used to check if the validated value is an array.
 
 ```javascript
 v8n()
-   .array()
-   .test("hello"); // false
+  .array()
+  .test("hello"); // false
 
 v8n()
-   .array()
-   .test([1, 2, 3]); // true
+  .array()
+  .test([1, 2, 3]); // true
 ```
 
 #### lowercase
@@ -757,12 +848,12 @@ An empty string does not match.
 
 ```javascript
 v8n()
- .lowercase()
- .test("hello"); // true
+  .lowercase()
+  .test("hello"); // true
 
 v8n()
- .lowercase()
- .test("Hello"); // false
+  .lowercase()
+  .test("Hello"); // false
 ```
 
 #### uppercase
@@ -776,12 +867,12 @@ An empty string does not match.
 
 ```javascript
 v8n()
- .uppercase()
- .test("HELLO"); // true
+  .uppercase()
+  .test("HELLO"); // true
 
 v8n()
- .uppercase()
- .test("Hello"); // false
+  .uppercase()
+  .test("Hello"); // false
 ```
 
 #### vowel
@@ -799,12 +890,12 @@ string does not match.
 
 ```javascript
 v8n()
- .vowel()
- .test("UE"); // true
+  .vowel()
+  .test("UE"); // true
 
 v8n()
- .vowel()
- .test("Me"); // false
+  .vowel()
+  .test("Me"); // false
 ```
 
 #### consonant
@@ -822,12 +913,12 @@ empty string does not match.
 
 ```javascript
 v8n()
- .consonant()
- .test("vn"); // true
+  .consonant()
+  .test("vn"); // true
 
 v8n()
- .consonant()
- .test("me"); // false
+  .consonant()
+  .test("me"); // false
 ```
 
 #### first
@@ -841,7 +932,7 @@ It can be used with strings and arrays.
 
 ##### Parameters
 
--   `item` **any** the expected first item
+- `item` **any** the expected first item
 
 ##### Examples
 
@@ -849,22 +940,22 @@ It can be used with strings and arrays.
 // With strings
 
 v8n()
- .first("H")
- .test("Hello"); // true
+  .first("H")
+  .test("Hello"); // true
 
 v8n()
- .first("A")
- .test("Hello"); // false
+  .first("A")
+  .test("Hello"); // false
 
 // With arrays
 
 v8n()
- .first("One")
- .test(["One", "Two", "Three"]); // true
+  .first("One")
+  .test(["One", "Two", "Three"]); // true
 
 v8n()
- .first(10)
- .test([0, 10, 20]); // false
+  .first(10)
+  .test([0, 10, 20]); // false
 ```
 
 #### last
@@ -878,18 +969,18 @@ specified item.
 
 ##### Parameters
 
--   `item` **any** the expected last item
+- `item` **any** the expected last item
 
 ##### Examples
 
 ```javascript
 v8n()
- .last("o")
- .test("Hello"); // true
+  .last("o")
+  .test("Hello"); // true
 
 v8n()
- .last(3)
- .test([1, 2, 3, 4]); // false
+  .last(3)
+  .test([1, 2, 3, 4]); // false
 ```
 
 #### empty
@@ -905,12 +996,12 @@ It's used to check if the validated value is empty.
 
 ```javascript
 v8n()
- .empty()
- .test(""); // true
+  .empty()
+  .test(""); // true
 
 v8n()
- .empty()
- .test([1, 2]); // false
+  .empty()
+  .test([1, 2]); // false
 ```
 
 #### length
@@ -928,19 +1019,19 @@ exact as this parameter.
 
 ##### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the min length expected
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the max length expected (optional, default `min`)
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the min length expected
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the max length expected (optional, default `min`)
 
 ##### Examples
 
 ```javascript
 v8n()
- .length(3, 5)
- .test([1, 2, 3, 4]); // true
+  .length(3, 5)
+  .test([1, 2, 3, 4]); // true
 
 v8n()
- .length(3)
- .test([1, 2, 3, 4]); // false
+  .length(3)
+  .test([1, 2, 3, 4]); // false
 ```
 
 #### minLength
@@ -955,18 +1046,18 @@ specified minimum length.
 
 ##### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the minimum expected length
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the minimum expected length
 
 ##### Examples
 
 ```javascript
 v8n()
- .minLength(3)
- .test([1, 2, 3, 4]); // true
+  .minLength(3)
+  .test([1, 2, 3, 4]); // true
 
 v8n()
- .minLength(3)
- .test([1, 2]); // false
+  .minLength(3)
+  .test([1, 2]); // false
 ```
 
 #### maxLength
@@ -981,18 +1072,18 @@ specified maximum length.
 
 ##### Parameters
 
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the maximum expected length
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the maximum expected length
 
 ##### Examples
 
 ```javascript
 v8n()
- .maxLength(3)
- .test([1, 2]); // true
+  .maxLength(3)
+  .test([1, 2]); // true
 
 v8n()
- .maxLength(3)
- .test([1, 2, 3, 4]); // false
+  .maxLength(3)
+  .test([1, 2, 3, 4]); // false
 ```
 
 #### negative
@@ -1005,12 +1096,12 @@ It's used to check if the validated value is a negative number.
 
 ```javascript
 v8n()
- .negative()
- .test(-1); // true
+  .negative()
+  .test(-1); // true
 
 v8n()
- .negative()
- .test(0); // false
+  .negative()
+  .test(0); // false
 ```
 
 #### positive
@@ -1024,17 +1115,17 @@ zero.
 
 ```javascript
 v8n()
- .positive()
- .test(1); // true
+  .positive()
+  .test(1); // true
 
 v8n()
- .position()
- .test(-1); // false
+  .position()
+  .test(-1); // false
 ```
 
 #### between
 
-Rule function  for range validation.
+Rule function for range validation.
 
 It's used to check if the validated value is between (inclusive) the
 specified range.
@@ -1045,19 +1136,19 @@ specified range.
 
 ##### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
 
 ##### Examples
 
 ```javascript
 v8n()
- .between(1, 3)
- .test(2); // true
+  .between(1, 3)
+  .test(2); // true
 
 v8n()
- .between(1, 3)
- .test(4); // false
+  .between(1, 3)
+  .test(4); // false
 ```
 
 #### range
@@ -1073,19 +1164,19 @@ specified range.
 
 ##### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
 
 ##### Examples
 
 ```javascript
 v8n()
- .range(1, 3)
- .test(2); // true
+  .range(1, 3)
+  .test(2); // true
 
 v8n()
- .range(1, 3)
- .test(4); // false
+  .range(1, 3)
+  .test(4); // false
 ```
 
 #### lessThan
@@ -1099,18 +1190,18 @@ bound value.
 
 ##### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (not inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (not inclusive)
 
 ##### Examples
 
 ```javascript
 v8n()
- .lessThan(10)
- .test(9); // true
+  .lessThan(10)
+  .test(9); // true
 
 v8n()
- .lessThan(10)
- .test(10); // false
+  .lessThan(10)
+  .test(10); // false
 ```
 
 #### lessThanOrEqual
@@ -1124,18 +1215,18 @@ specified upper bound value.
 
 ##### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (inclusive)
 
 ##### Examples
 
 ```javascript
 v8n()
- .lessThanOrEqual(10)
- .test(10); // true
+  .lessThanOrEqual(10)
+  .test(10); // true
 
 v8n()
- .lessThanOrEqual(10)
- .test(11); // false
+  .lessThanOrEqual(10)
+  .test(11); // false
 ```
 
 #### greaterThan
@@ -1149,18 +1240,18 @@ lower bound value.
 
 ##### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (not inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (not inclusive)
 
 ##### Examples
 
 ```javascript
 v8n()
- .greaterThan(10)
- .test(11); // true
+  .greaterThan(10)
+  .test(11); // true
 
 v8n()
- .greaterThan(10)
- .test(10); // false
+  .greaterThan(10)
+  .test(10); // false
 ```
 
 #### greaterThanOrEqual
@@ -1174,18 +1265,18 @@ specified lower bound value.
 
 ##### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (inclusive)
 
 ##### Examples
 
 ```javascript
 v8n()
- .greaterThanOrEqual(10)
- .test(10); // true
+  .greaterThanOrEqual(10)
+  .test(10); // true
 
 v8n()
- .greaterThanOrEqual(10)
- .test(9); // false
+  .greaterThanOrEqual(10)
+  .test(9); // false
 ```
 
 #### even
@@ -1198,12 +1289,12 @@ It's used to check if the validated value is even (divisible by 2).
 
 ```javascript
 v8n()
- .even()
- .test(40); // true
+  .even()
+  .test(40); // true
 
 v8n()
- .even()
- .test(21); // false
+  .even()
+  .test(21); // false
 ```
 
 #### odd
@@ -1216,12 +1307,12 @@ It's used to check if the validated value is odd (not divisible by 2).
 
 ```javascript
 v8n()
- .odd()
- .test(20); // false
+  .odd()
+  .test(20); // false
 
 v8n()
- .odd()
- .test(9); // true
+  .odd()
+  .test(9); // true
 ```
 
 #### includes
@@ -1234,18 +1325,18 @@ It's used to check if the validated value contains the specified item.
 
 ##### Parameters
 
--   `expected` **any** the expected item to be found
+- `expected` **any** the expected item to be found
 
 ##### Examples
 
 ```javascript
 v8n()
- .includes(2)
- .test([1, 2, 3]); // true
+  .includes(2)
+  .test([1, 2, 3]); // true
 
 v8n()
- .includes("a")
- .test("Hello"); // false
+  .includes("a")
+  .test("Hello"); // false
 ```
 
 #### integer
@@ -1258,12 +1349,12 @@ It's used to check if the validated value is an integer (not a decimal).
 
 ```javascript
 v8n()
- .integer()
- .test(20); // true
+  .integer()
+  .test(20); // true
 
 v8n()
- .integer()
- .test(2.2); // false
+  .integer()
+  .test(2.2); // false
 ```
 
 ## v8n
@@ -1303,7 +1394,7 @@ invalid value.
 
 #### Parameters
 
--   `newRules` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** an object containing named custom `rule functions`
+- `newRules` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** an object containing named custom `rule functions`
 
 #### Examples
 
@@ -1391,10 +1482,10 @@ defines if the rule has to be inverted in its meaning.
 
 ### Parameters
 
--   `name` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** rule function name
--   `fn` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** validation function executed by the rule
--   `args` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** arguments list for the validation function
--   `invert` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** indicates if the rule has its meaning inverted
+- `name` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** rule function name
+- `fn` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** validation function executed by the rule
+- `args` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** arguments list for the validation function
+- `invert` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** indicates if the rule has its meaning inverted
 
 ## core
 
@@ -1415,7 +1506,7 @@ returns a `boolean` result.
 
 #### Parameters
 
--   `value` **any** the value to be validated
+- `value` **any** the value to be validated
 
 Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** true for valid and false for invalid
 
@@ -1431,10 +1522,9 @@ throws a [ValidationException](#validationexception) when the value is not valid
 
 #### Parameters
 
--   `value` **any** the value to be validated
+- `value` **any** the value to be validated
 
-
--   Throws **[ValidationException](#validationexception)** exception thrown when the validation fails
+* Throws **[ValidationException](#validationexception)** exception thrown when the validation fails
 
 ## ValidationException
 
@@ -1452,9 +1542,9 @@ exception.
 
 ### Parameters
 
--   `rule` **[Rule](#rule)** performing when the exception was thrown
--   `value` **any** been validated when the exception was thrown
--   `cause` **any** cause of the thrown exception
+- `rule` **[Rule](#rule)** performing when the exception was thrown
+- `value` **any** been validated when the exception was thrown
+- `cause` **any** cause of the thrown exception
 
 ## modifiers
 
@@ -1504,7 +1594,7 @@ matches an specified pattern.
 
 #### Parameters
 
--   `pattern` **[RegExp](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/RegExp)** the regular expression pattern
+- `pattern` **[RegExp](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/RegExp)** the regular expression pattern
 
 #### Examples
 
@@ -1532,7 +1622,7 @@ specified expected value.
 
 #### Parameters
 
--   `expected` **any** the expected value
+- `expected` **any** the expected value
 
 #### Examples
 
@@ -1560,7 +1650,7 @@ specified expected value.
 
 #### Parameters
 
--   `expected` **any** the expected value
+- `expected` **any** the expected value
 
 #### Examples
 
@@ -1781,7 +1871,7 @@ It can be used with strings and arrays.
 
 #### Parameters
 
--   `item` **any** the expected first item
+- `item` **any** the expected first item
 
 #### Examples
 
@@ -1818,7 +1908,7 @@ specified item.
 
 #### Parameters
 
--   `item` **any** the expected last item
+- `item` **any** the expected last item
 
 #### Examples
 
@@ -1868,8 +1958,8 @@ exact as this parameter.
 
 #### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the min length expected
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the max length expected (optional, default `min`)
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the min length expected
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the max length expected (optional, default `min`)
 
 #### Examples
 
@@ -1895,7 +1985,7 @@ specified minimum length.
 
 #### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the minimum expected length
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the minimum expected length
 
 #### Examples
 
@@ -1921,7 +2011,7 @@ specified maximum length.
 
 #### Parameters
 
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the maximum expected length
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the maximum expected length
 
 #### Examples
 
@@ -1985,8 +2075,8 @@ specified range.
 
 #### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
 
 #### Examples
 
@@ -2013,8 +2103,8 @@ specified range.
 
 #### Parameters
 
--   `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
--   `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
+- `min` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound of the range
+- `max` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound of the range
 
 #### Examples
 
@@ -2039,7 +2129,7 @@ bound value.
 
 #### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (not inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (not inclusive)
 
 #### Examples
 
@@ -2064,7 +2154,7 @@ specified upper bound value.
 
 #### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the upper bound (inclusive)
 
 #### Examples
 
@@ -2089,7 +2179,7 @@ lower bound value.
 
 #### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (not inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (not inclusive)
 
 #### Examples
 
@@ -2114,7 +2204,7 @@ specified lower bound value.
 
 #### Parameters
 
--   `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (inclusive)
+- `bound` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the lower bound (inclusive)
 
 #### Examples
 
@@ -2174,7 +2264,7 @@ It's used to check if the validated value contains the specified item.
 
 #### Parameters
 
--   `expected` **any** the expected item to be found
+- `expected` **any** the expected item to be found
 
 #### Examples
 
