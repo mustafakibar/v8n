@@ -95,7 +95,7 @@ asynchronously. It will return a promise that will resolve with the validated
 value when it's valid and rejects with a
 [ValidationException](#validationexception) when it's invalid.
 
-> Look at the [testAsync](#testasync) documentation to learn more about them.
+> Look at the [testAsync](#testasync) documentation to learn more about it.
 >
 > To learn how you can define your custom asynchronous rules, check out [this
 > documentation](#extend) section.
@@ -397,9 +397,9 @@ invalid value.
 **Asynchronous custom rule structure:\***
 
 A asynchronous custom rule looks like a basic custom rule, but instead of
-returning a function which returns `true` or `false`, it should return a
-function that returns a promise which resolves to `true` when the value is
-valid and to `false` when the value is invalid.
+returning a function which returns a boolean value, it should return a function
+that returns a promise which resolves to `true` when the value is valid and to
+`false` when it's invalid.
 
 ##### Parameters
 
